@@ -53,12 +53,12 @@ type NbaApiResponse struct {
 		Response []GameData
 }
 
-func getGames(dateStr string) []GameData {
+func getGames(dateStr string, apiKey string) []GameData {
 	url := fmt.Sprintf("https://api-basketball.p.rapidapi.com/games?season=2020-2021&league=12&date=%s&timezone=est", dateStr)
 
 	req, _ := http.NewRequest("GET", url, nil)
 
-	req.Header.Add("x-rapidapi-key", "22d40c7232msh1d97058c647559fp198cd3jsnc2c6c036f070")
+	req.Header.Add("x-rapidapi-key", apiKey)
 	req.Header.Add("x-rapidapi-host", "api-basketball.p.rapidapi.com")
 
 	res, _ := http.DefaultClient.Do(req)
@@ -124,7 +124,7 @@ Once you have one, set it in the config with: config set rapidApiKey your-key-he
 
 		fmt.Fprintln(os.Stdout, dateStr)
 
-		gameData := getGames(dateStr)
+		gameData := getGames(dateStr, rapidApiKey)
 		for _, item := range gameData {
 			t, _ := time.Parse(time.RFC3339, item.Date)
 			zone, _ := time.Now().Zone()
