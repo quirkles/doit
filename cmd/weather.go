@@ -30,10 +30,9 @@ import (
 )
 
 // weatherCmd represents the weather command
-var validDates = [2]string{"today", "tomorrow"}
 
 func getOutboundIP() string {
-	url := "https://api.ipify.org?format=text"	// we are using a pulib IP API, we're using ipify here, below are some others
+	url := "https://api.ipify.org?format=text" // we are using a pulib IP API, we're using ipify here, below are some others
 	// https://www.ipify.org
 	// http://myexternalip.com
 	// http://api.ident.me
@@ -51,9 +50,9 @@ func getOutboundIP() string {
 }
 
 type CityCountryCode struct {
-	City string
+	City         string
 	Country_code string
-	Region_code string
+	Region_code  string
 }
 
 func getCityCountryCode(ip string, apiKey string) CityCountryCode {
@@ -76,21 +75,23 @@ func getCityCountryCode(ip string, apiKey string) CityCountryCode {
 	return result
 }
 
-type WeatherResponse struct {
-	List []struct {
-		Dt int64
-		Main struct{
-			Temp float32
-			Feels_like float32
-		}
-		Weather[]struct{
-			Description string
-		}
+type WeatherDetailsForTime struct {
+	Dt   int64
+	Main struct {
+		Temp       float32
+		Feels_like float32
+	}
+	Weather []struct {
+		Description string
 	}
 }
 
+type WeatherResponse struct {
+	List []WeatherDetailsForTime
+}
+
 func getWeather(regionData CityCountryCode, apiKey string) WeatherResponse {
-	url := fmt.Sprintf("http://api.openweathermap.org/data/2.5/forecast?q=%s,%s,%s&appid=%s&cnt=3&units=metric", regionData.City, regionData.Region_code, regionData.Country_code, apiKey)
+	url := fmt.Sprintf("http://api.openweathermap.org/data/2.5/forecast?q=%s,%s,%s&appid=%s&cnt=8&units=metric", regionData.City, regionData.Region_code, regionData.Country_code, apiKey)
 	resp, err := http.Get(url)
 	if err != nil {
 		panic(err)
@@ -110,7 +111,6 @@ func getWeather(regionData CityCountryCode, apiKey string) WeatherResponse {
 	return result
 }
 
-
 var weatherCmd = &cobra.Command{
 	Use:   "weather",
 	Short: "A brief description of your command",
@@ -121,6 +121,7 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		validDates := [3]string{"now", "later", "tomorrow"}
 		weatherApiKey := viper.GetString("weatherapikey")
 		ipLocationApiKey := viper.GetString("iplocationapikey")
 		if len(weatherApiKey) == 0 {
@@ -148,9 +149,20 @@ Once you have one, set it in the config with: config set ipLocationApiKey your-k
 		ip := getOutboundIP()
 		cityCountryCode := getCityCountryCode(ip, ipLocationApiKey)
 		weatherResponse := getWeather(cityCountryCode, weatherApiKey)
-		tm := time.Unix(weatherResponse.List[0].Dt, 0)
-		fmt.Fprintln(os.Stdout, "In", cityCountryCode.City, "at", tm.Format(time.Kitchen), "its going to be", weatherResponse.List[0].Main.Temp, "feeling like", weatherResponse.List[0].Main.Feels_like)
-
+		var weatherDetailsList []WeatherDetailsForTime
+		switch date {
+		case "now":
+			weatherDetailsList = weatherResponse.List[0:2]
+		case "later":
+			weatherDetailsList = weatherResponse.List[2:4]
+		case "tomorrow":
+			weatherDetailsList = weatherResponse.List[4:len(weatherResponse.List)]
+		}
+		fmt.Fprintln(os.Stdout, "In", cityCountryCode.City)
+		for _, item := range weatherDetailsList {
+			tm := time.Unix(item.Dt, 0)
+			fmt.Fprintln(os.Stdout, "At", tm.Format(time.Kitchen), "its going to be", item.Main.Temp, "feeling like", item.Main.Feels_like)
+		}
 	},
 }
 
